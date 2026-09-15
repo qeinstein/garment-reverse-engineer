@@ -95,7 +95,12 @@ class ReWeaverInferencePipeline:
         # 4. Adaptive Scaled Patch Points
         # complex_stitch may be wrapped in DDP or plain Module
         stitch_module = getattr(complex_stitch, "module", complex_stitch)
-        pred_scaled = stitch_module.forward_scaled_points(patch_features)
+        if hasattr(stitch_module, "get_scaled_points"):
+            pred_scaled = stitch_module.get_scaled_points(patch_features)
+        elif hasattr(stitch_module, "forward_scaled_points"):
+            pred_scaled = stitch_module.forward_scaled_points(patch_features)
+        else:
+            pred_scaled = stitch_module.patch_model.forward_scaled_points(patch_features)
         patch_pred["pred_patch_points_scaled"] = pred_scaled["pred_patch_points_scaled"]
 
         # 5. 2D Pattern Edge Decoding & Filtering

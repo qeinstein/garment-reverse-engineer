@@ -202,3 +202,5 @@ class ComplexStitchModel(nn.Module):
     def get_scaled_points(self, patch_features):
 
         return self.patch_model.forward_scaled_points(patch_features)
+
+    forward_scaled_points = get_scaled_points
