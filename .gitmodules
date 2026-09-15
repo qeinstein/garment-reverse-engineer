@@ -1,0 +1,6 @@
+[submodule "vendor/atelier"]
+	path = vendor/atelier
+	url = https://github.com/qeinstein/atelier.git
+[submodule "vendor/seamer-studio"]
+	path = vendor/seamer-studio
+	url = https://github.com/qeinstein/seamer-studio.git
