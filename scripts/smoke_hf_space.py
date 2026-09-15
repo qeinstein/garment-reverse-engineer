@@ -118,13 +118,25 @@ def run_live_smoke_test(space_url: str, token: str | None, sample_dir: Path):
         print("Install it via: `pip install gradio_client`")
         sys.exit(1)
 
-    print("\n1. Connecting to Hugging Face Space...")
+    # Normalize Space URL to Space ID (e.g. 'Fluxx08/reweaver-zero')
+    cleaned_url = space_url.strip()
+    if "huggingface.co/spaces/" in cleaned_url:
+        space_target = cleaned_url.split("huggingface.co/spaces/")[-1].strip("/")
+    else:
+        space_target = cleaned_url
+
+    print(f"\n1. Connecting to Hugging Face Space ({space_target})...")
     t_connect_start = time.time()
     try:
         try:
-            client = Client(space_url, token=token)
-        except TypeError:
-            client = Client(space_url, hf_token=token)
+            client = Client(space_target, token=token)
+        except Exception:
+            # Fallback to direct .hf.space domain if space ID failed
+            if "/" in space_target and not space_target.startswith("http"):
+                direct_domain = f"https://{space_target.replace('/', '-').lower()}.hf.space"
+                client = Client(direct_domain, token=token)
+            else:
+                client = Client(space_url, token=token)
     except Exception as e:
         print(f"ERROR: Failed to connect to Space at {space_url}: {e}")
         print("\nTroubleshooting tips:")

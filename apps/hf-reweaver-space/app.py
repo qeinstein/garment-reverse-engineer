@@ -126,10 +126,17 @@ def render_pattern_2d_plot(raw_output: ReWeaverRawOutput) -> np.ndarray:
     ax.set_ylabel("Height (mm)", fontsize=9)
     fig.tight_layout()
 
-    # Convert plot to RGB array
+    # Convert plot to RGB array (compatible with matplotlib 3.7 - 3.11+)
     fig.canvas.draw()
-    img_arr = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    img_arr = img_arr.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    if hasattr(fig.canvas, "buffer_rgba"):
+        rgba = np.asarray(fig.canvas.buffer_rgba())
+        img_arr = rgba[:, :, :3].copy()
+    elif hasattr(fig.canvas, "tostring_rgb"):
+        img_arr = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        img_arr = img_arr.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    else:
+        rgba = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
+        img_arr = rgba.reshape(fig.canvas.get_width_height()[::-1] + (4,))[:, :, 1:4].copy()
     plt.close(fig)
     return img_arr
 
