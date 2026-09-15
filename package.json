@@ -1,0 +1,23 @@
+{
+  "name": "garment-reverse-engineer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "scripts": {
+    "build": "pnpm -r --filter './packages/**' build",
+    "convert": "node packages/seamer-adapter/dist/cli.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "@types/delaunator": "^5.0.3",
+    "@types/node": "^22.13.0",
+    "@types/three": "^0.186.0",
+    "delaunator": "^5.1.0",
+    "three": "^0.186.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

@@ -1,0 +1,250 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://garment-reverse-engineer.org/schemas/v0/garment-ir.json",
+  "title": "GarmentIR",
+  "description": "Canonical Garment Intermediate Representation (v0.1.0)",
+  "type": "object",
+  "required": ["schema_version", "metadata", "units", "materials", "panels", "seams"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["0.1.0"]
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["id", "name", "category"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at": { "type": "string" },
+        "updated_at": { "type": "string" },
+        "source_media": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "uri"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "type": "string", "enum": ["image", "video", "multiview_bundle"] },
+              "uri": { "type": "string" },
+              "viewpoint_label": { "type": "string" },
+              "timestamp_seconds": { "type": "number" },
+              "frame_index": { "type": "integer" }
+            }
+          }
+        },
+        "reconstruction_model": {
+          "type": "object",
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": "string" },
+            "checkpoint": { "type": "string" },
+            "device": { "type": "string" }
+          }
+        }
+      }
+    },
+    "units": {
+      "type": "object",
+      "required": ["spatial_2d", "spatial_3d", "angles", "mass_density"],
+      "properties": {
+        "spatial_2d": { "type": "string", "enum": ["mm", "cm", "inch"] },
+        "spatial_3d": { "type": "string", "enum": ["m", "mm", "cm"] },
+        "angles": { "type": "string", "enum": ["degrees", "radians"] },
+        "mass_density": { "type": "string", "enum": ["g/m2", "oz/yd2"] }
+      }
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "stretch_warp", "stretch_weft", "bend_stiffness", "thickness_mm", "density_gsm"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "stretch_warp": { "type": "number", "minimum": 0, "maximum": 100 },
+          "stretch_weft": { "type": "number", "minimum": 0, "maximum": 100 },
+          "bend_stiffness": { "type": "number", "minimum": 0, "maximum": 100 },
+          "thickness_mm": { "type": "number", "exclusiveMinimum": 0 },
+          "density_gsm": { "type": "number", "exclusiveMinimum": 0 },
+          "color": { "type": "string" },
+          "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+          "metalness": { "type": "number", "minimum": 0, "maximum": 1 },
+          "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+          "texture_url": { "type": "string" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "panels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "category", "material_id", "boundary", "grain_line"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "category": { "type": "string" },
+          "material_id": { "type": "string" },
+          "boundary": {
+            "type": "object",
+            "required": ["edges", "closed"],
+            "properties": {
+              "closed": { "type": "boolean" },
+              "edges": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "kind", "start", "end"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "kind": { "type": "string", "enum": ["line", "cubic_bezier", "arc", "polyline"] },
+                    "start": {
+                      "type": "object",
+                      "required": ["x", "y"],
+                      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+                    },
+                    "end": {
+                      "type": "object",
+                      "required": ["x", "y"],
+                      "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+                    },
+                    "control_points": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["x", "y"],
+                        "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "polyline_samples": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["x", "y"],
+                        "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+                      }
+                    },
+                    "seam_allowance_mm": { "type": "number" },
+                    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                }
+              }
+            }
+          },
+          "grain_line": {
+            "type": "object",
+            "required": ["angle_deg"],
+            "properties": {
+              "angle_deg": { "type": "number" },
+              "direction": {
+                "type": "object",
+                "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+              }
+            }
+          },
+          "seam_allowance_mm": { "type": "number" },
+          "layout_position": {
+            "type": "object",
+            "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+          },
+          "placement_3d": {
+            "type": "object",
+            "properties": {
+              "body_region": { "type": "string" },
+              "cylinder_binding": {
+                "type": "object",
+                "required": ["cylinder_name", "u_degrees", "v"],
+                "properties": {
+                  "cylinder_name": { "type": "string" },
+                  "u_degrees": { "type": "number" },
+                  "v": { "type": "number" },
+                  "radial_offset_mm": { "type": "number" },
+                  "mode": { "type": "string", "enum": ["curved", "flat"] }
+                }
+              },
+              "translation": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "flip_normal": { "type": "boolean" }
+            }
+          },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "seams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "edges_a", "edges_b"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "edges_a": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["panel_id", "edge_id"],
+              "properties": {
+                "panel_id": { "type": "string" },
+                "edge_id": { "type": "string" },
+                "reversed": { "type": "boolean" },
+                "mirrored": { "type": "boolean" }
+              }
+            }
+          },
+          "edges_b": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["panel_id", "edge_id"],
+              "properties": {
+                "panel_id": { "type": "string" },
+                "edge_id": { "type": "string" },
+                "reversed": { "type": "boolean" },
+                "mirrored": { "type": "boolean" }
+              }
+            }
+          },
+          "seam_type": { "type": "string" },
+          "gather_ratio": { "type": "number" },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+        }
+      }
+    },
+    "wearer": {
+      "type": "object",
+      "required": ["gender", "unit", "measurements"],
+      "properties": {
+        "gender": { "type": "string", "enum": ["female", "male", "neutral"] },
+        "unit": { "type": "string", "enum": ["metric", "imperial"] },
+        "measurements": { "type": "object" }
+      }
+    },
+    "hypotheses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "aspect", "description", "confidence", "chosen", "alternatives"],
+        "properties": {
+          "id": { "type": "string" },
+          "aspect": { "type": "string" },
+          "description": { "type": "string" },
+          "confidence": { "type": "number" },
+          "chosen": { "type": "boolean" },
+          "alternatives": { "type": "array" }
+        }
+      }
+    }
+  }
+}
