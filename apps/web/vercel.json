@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/studio/:path*",
+      "destination": "/404.html"
+    },
+    {
+      "source": "/flow/:path*",
+      "destination": "/404.html"
+    }
+  ]
+}

@@ -128,15 +128,16 @@ def run_live_smoke_test(space_url: str, token: str | None, sample_dir: Path):
     print(f"\n1. Connecting to Hugging Face Space ({space_target})...")
     t_connect_start = time.time()
     try:
+        client_kwargs = {"token": token, "httpx_kwargs": {"timeout": 120.0}}
         try:
-            client = Client(space_target, token=token)
+            client = Client(space_target, **client_kwargs)
         except Exception:
             # Fallback to direct .hf.space domain if space ID failed
             if "/" in space_target and not space_target.startswith("http"):
                 direct_domain = f"https://{space_target.replace('/', '-').lower()}.hf.space"
-                client = Client(direct_domain, token=token)
+                client = Client(direct_domain, **client_kwargs)
             else:
-                client = Client(space_url, token=token)
+                client = Client(space_url, **client_kwargs)
     except Exception as e:
         print(f"ERROR: Failed to connect to Space at {space_url}: {e}")
         print("\nTroubleshooting tips:")
@@ -149,7 +150,7 @@ def run_live_smoke_test(space_url: str, token: str | None, sample_dir: Path):
     print("\n2. Submitting 4-view reconstruction job to ZeroGPU (/reconstruct)...")
     t_req_start = time.time()
     try:
-        result = client.predict(
+        job = client.submit(
             front_img=handle_file(image_paths[0]),
             right_img=handle_file(image_paths[1]),
             back_img=handle_file(image_paths[2]),
@@ -157,6 +158,11 @@ def run_live_smoke_test(space_url: str, token: str | None, sample_dir: Path):
             variant="GCD_ori",
             api_name="/reconstruct"
         )
+        while not job.done():
+            status = job.status()
+            print(f"   [STATUS {time.time()-t_req_start:.1f}s] {status.code.name if hasattr(status.code, 'name') else status.code}")
+            time.sleep(3)
+        result = job.result()
     except Exception as e:
         print(f"ERROR: Inference call failed: {e}")
         sys.exit(1)

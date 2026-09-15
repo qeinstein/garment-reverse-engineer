@@ -2,5 +2,9 @@ packages:
   - 'packages/*'
   - 'apps/*'
   - 'services/*'
+  - 'vendor/seamer-studio/packages/*'
+  - 'vendor/seamer-studio/vendor/body-model'
+  - 'vendor/atelier/packages/*'
 allowBuilds:
+  core-js: set this to true or false
   esbuild: true
