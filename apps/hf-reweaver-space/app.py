@@ -36,6 +36,30 @@ except ImportError:
             return decorator
 
 import gradio as gr
+
+# Hotfix for Gradio / Pydantic 2.11+ schema generation bug:
+# TypeError: argument of type 'bool' is not iterable in gradio_client.utils.get_type
+try:
+    import gradio_client.utils as _gc_utils
+
+    _orig_get_type = getattr(_gc_utils, "get_type", None)
+    if _orig_get_type:
+        def _safe_get_type(schema):
+            if isinstance(schema, bool):
+                return "bool"
+            return _orig_get_type(schema)
+        _gc_utils.get_type = _safe_get_type
+
+    _orig_schema_to_type = getattr(_gc_utils, "_json_schema_to_python_type", None)
+    if _orig_schema_to_type:
+        def _safe_schema_to_type(schema, defs=None):
+            if isinstance(schema, bool):
+                return "bool"
+            return _orig_schema_to_type(schema, defs)
+        _gc_utils._json_schema_to_python_type = _safe_schema_to_type
+except Exception:
+    pass
+
 import torch
 try:
     from reweaver import (
