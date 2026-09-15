@@ -9,3 +9,9 @@ coverage/
 .env
 .env.local
 .env.*.local
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+vendor/reweaver/
+*.tsbuildinfo

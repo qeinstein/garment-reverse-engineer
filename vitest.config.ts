@@ -10,6 +10,7 @@ export default defineConfig({
       '@garment-ir/core': path.resolve(__dirname, 'packages/garment-ir/src/index.ts'),
       '@garment-ir/validation': path.resolve(__dirname, 'packages/validation/src/index.ts'),
       '@garment-ir/seamer-adapter': path.resolve(__dirname, 'packages/seamer-adapter/src/index.ts'),
+      '@garment-ir/reweaver-adapter': path.resolve(__dirname, 'packages/reweaver-adapter/src/index.ts'),
       '@atelier/core': path.resolve(__dirname, 'vendor/atelier/packages/core/src/index.ts'),
       '@atelier/geometry': path.resolve(__dirname, 'vendor/atelier/packages/geometry/src/index.ts'),
       '@atelier/io': path.resolve(__dirname, 'vendor/atelier/packages/io/src/index.ts'),

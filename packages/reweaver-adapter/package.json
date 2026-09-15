@@ -1,0 +1,26 @@
+{
+  "name": "@garment-ir/reweaver-adapter",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@garment-ir/core": "workspace:*",
+    "@garment-ir/validation": "workspace:*"
+  },
+  "devDependencies": {
+    "@garment-ir/seamer-adapter": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
