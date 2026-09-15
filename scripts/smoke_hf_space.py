@@ -121,7 +121,10 @@ def run_live_smoke_test(space_url: str, token: str | None, sample_dir: Path):
     print("\n1. Connecting to Hugging Face Space...")
     t_connect_start = time.time()
     try:
-        client = Client(space_url, hf_token=token)
+        try:
+            client = Client(space_url, token=token)
+        except TypeError:
+            client = Client(space_url, hf_token=token)
     except Exception as e:
         print(f"ERROR: Failed to connect to Space at {space_url}: {e}")
         print("\nTroubleshooting tips:")
