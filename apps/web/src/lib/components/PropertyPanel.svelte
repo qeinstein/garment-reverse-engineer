@@ -1489,9 +1489,9 @@
                     {/if}
                   </div>
                 {:else}<p class="opacity-60">No materials yet.</p>{/each}
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                  <button class="btn btn-sm btn-primary" onclick={createMaterial}><span class="material-symbols-rounded text-base">add</span> Create material</button>
-                  <button class="btn btn-sm btn-secondary" title="Pick a material from your library" onclick={() => (showLibraryPicker = !showLibraryPicker)}><span class="material-symbols-rounded text-base">library_add</span> Add from library</button>
+                <div class="flex flex-col gap-1.5 mt-1">
+                  <button class="btn btn-sm btn-primary w-full justify-start" onclick={createMaterial}><span class="material-symbols-rounded text-base">add</span> Create material</button>
+                  <button class="btn btn-sm btn-secondary btn-outline w-full justify-start" title="Pick a material from your library" onclick={() => (showLibraryPicker = !showLibraryPicker)}><span class="material-symbols-rounded text-base">library_add</span> Add from library</button>
                 </div>
                 {#if showLibraryPicker}
                   <div class="border border-base-300 rounded-md p-2 bg-base-200 space-y-1">

@@ -47,11 +47,13 @@
 </script>
 
 <div class="flex items-center h-full px-1 gap-0.5 overflow-x-auto">
-  <div class="join join-horizontal">
+  <div class="join join-horizontal" role="toolbar" aria-label="Drawing Tools">
     {#each tools as tool}
       <button
         class="join-item btn btn-xs tooltip tooltip-top"
         data-tip="{tool.label}{tool.hotkey ? ' (' + tool.hotkey + ')' : ''}"
+        aria-label="{tool.label}{tool.hotkey ? ' shortcut ' + tool.hotkey : ''}"
+        aria-pressed={$selectedTool === tool.id}
         class:btn-active={$selectedTool === tool.id}
         onclick={() => selectedTool.set(tool.id)}
       >
@@ -60,30 +62,47 @@
     {/each}
   </div>
 
-  {#if onai}
-    <button
-      class="btn btn-xs btn-primary gap-1 font-semibold ml-1 shadow-sm tooltip tooltip-bottom"
-      data-tip="Reverse engineer an existing garment from photos with AI"
-      onclick={onai}
-    >
-      <span>🧵</span> AI Reverse Engineer
-    </button>
-  {/if}
-
   <div class="divider divider-horizontal mx-1"></div>
 
-  <div class="flex items-center gap-0.5">
-    <button class="btn btn-xs" class:btn-active={currentPattern.showGrid} onclick={toggleGrid} title="Toggle grid">Grid</button>
-    <button class="btn btn-xs" class:btn-active={currentPattern.showPieceNames} onclick={togglePieceNames} title="Toggle piece names">Names</button>
-    <button class="btn btn-xs" class:btn-active={currentPattern.show2dTextures ?? true} onclick={toggleTextures} title="Toggle fabric texture fills in the 2D view">Fabric</button>
+  <div class="flex items-center gap-0.5" role="group" aria-label="Display Overlays">
+    <button
+      class="btn btn-xs"
+      class:btn-active={currentPattern.showGrid}
+      aria-pressed={currentPattern.showGrid}
+      aria-label="Toggle grid visibility"
+      onclick={toggleGrid}
+      title="Toggle grid"
+    >
+      Grid
+    </button>
+    <button
+      class="btn btn-xs"
+      class:btn-active={currentPattern.showPieceNames}
+      aria-pressed={currentPattern.showPieceNames}
+      aria-label="Toggle piece names"
+      onclick={togglePieceNames}
+      title="Toggle piece names"
+    >
+      Names
+    </button>
+    <button
+      class="btn btn-xs"
+      class:btn-active={currentPattern.show2dTextures ?? true}
+      aria-pressed={currentPattern.show2dTextures ?? true}
+      aria-label="Toggle fabric textures in 2D view"
+      onclick={toggleTextures}
+      title="Toggle fabric texture fills in the 2D view"
+    >
+      Fabric
+    </button>
   </div>
 
   <div class="divider divider-horizontal mx-1"></div>
 
-  <div class="flex items-center gap-0.5">
-    <button class="btn btn-xs" onclick={zoomOut} title="Zoom out">-</button>
-    <span class="text-xs tabular-nums w-10 text-center" data-testid="zoom-percent">{Math.round($zoom * 100)}%</span>
-    <button class="btn btn-xs" onclick={zoomIn} title="Zoom in">+</button>
+  <div class="flex items-center gap-0.5" role="group" aria-label="Zoom Controls">
+    <button class="btn btn-xs" onclick={zoomOut} title="Zoom out" aria-label="Zoom out">-</button>
+    <span class="text-xs tabular-nums w-10 text-center" data-testid="zoom-percent" aria-label="Current zoom level">{Math.round($zoom * 100)}%</span>
+    <button class="btn btn-xs" onclick={zoomIn} title="Zoom in" aria-label="Zoom in">+</button>
   </div>
 
   <div class="flex-1"></div>

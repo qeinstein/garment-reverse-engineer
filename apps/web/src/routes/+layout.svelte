@@ -36,7 +36,7 @@
   </main>
   {#if !isStudio}
     <footer class="footer footer-center p-10 bg-base-200 text-base-content rounded">
-      <nav class="grid grid-flow-col gap-4">
+      <nav class="flex flex-wrap justify-center gap-x-6 gap-y-2">
         <a href="{base}/about" class="link link-hover">About</a>
         <a href="{base}/software" class="link link-hover">Software</a>
         <a href="{base}/docs" class="link link-hover">Docs</a>
@@ -45,7 +45,7 @@
         <a href="{base}/changelog" class="link link-hover">Changelog</a>
         <a href="{base}/support-seamer" class="link link-hover">Support</a>
       </nav>
-      <nav class="grid grid-flow-col gap-4 text-sm opacity-70">
+      <nav class="flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm opacity-70">
         <a href="{base}/privacy" class="link link-hover">Privacy</a>
         <a href="{base}/terms" class="link link-hover">Terms</a>
       </nav>

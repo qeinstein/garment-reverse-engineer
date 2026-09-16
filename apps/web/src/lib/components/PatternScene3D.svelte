@@ -818,21 +818,21 @@
   {/if}
 
   <!-- Camera view presets -->
-  <div class="absolute top-2 right-2 z-10 join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow">
+  <div class="absolute top-2 right-2 z-10 join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow" role="group" aria-label="Camera Views">
     {#each [['front', 'Front'], ['back', 'Back'], ['left', 'Left'], ['right', 'Right'], ['top', 'Top']] as [v, label]}
-      <button class="join-item btn btn-xs" title={`${label} view`} onclick={() => setView(v as 'front')}>{label[0]}</button>
+      <button class="join-item btn btn-xs" title={`${label} view`} aria-label={`${label} camera view`} onclick={() => setView(v as 'front')}>{label[0]}</button>
     {/each}
-    <button class="join-item btn btn-xs" title="Reset view" onclick={() => setView('reset')} aria-label="Reset view"><span class="material-symbols-rounded text-sm">refresh</span></button>
+    <button class="join-item btn btn-xs" title="Reset view" onclick={() => setView('reset')} aria-label="Reset camera view"><span class="material-symbols-rounded text-sm">refresh</span></button>
   </div>
 
   <!-- Lighting-mode tabs + Save Image (mirrors the source's bottom bar) -->
   <div class="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
-    <div class="join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow">
+    <div class="join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow" role="group" aria-label="Lighting Presets">
       {#each lightingTabs as tab}
-        <button class="join-item btn btn-xs" class:btn-active={lightingMode === tab.id} onclick={() => setLighting(tab.id)}>{tab.label}</button>
+        <button class="join-item btn btn-xs" class:btn-active={lightingMode === tab.id} aria-pressed={lightingMode === tab.id} aria-label={`${tab.label} lighting`} onclick={() => setLighting(tab.id)}>{tab.label}</button>
       {/each}
     </div>
-    <button class="btn btn-xs gap-1 bg-base-200/85 backdrop-blur shadow" title="Save a PNG of the 3D view" onclick={saveImage}>
+    <button class="btn btn-xs gap-1 bg-base-200/85 backdrop-blur shadow" title="Save a PNG of the 3D view" aria-label="Save 3D screenshot as PNG" onclick={saveImage}>
       <span class="material-symbols-rounded notranslate text-base" aria-hidden="true">photo_camera</span>
       Save Image
     </button>
@@ -841,9 +841,9 @@
   <!-- Pose selector — only meaningful when the pattern is drafted on a body -->
   {#if poses.length && bodyEnabled}
     <div class="absolute bottom-11 left-1/2 -translate-x-1/2 z-10">
-      <div class="join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow">
+      <div class="join join-horizontal bg-base-200/85 backdrop-blur rounded-lg shadow" role="group" aria-label="Avatar Poses">
         {#each poses as p}
-          <button class="join-item btn btn-xs" class:btn-active={currentPose === p} onclick={() => setPose(p)}>{p}</button>
+          <button class="join-item btn btn-xs" class:btn-active={currentPose === p} aria-pressed={currentPose === p} aria-label={`Set pose to ${p}`} onclick={() => setPose(p)}>{p}</button>
         {/each}
       </div>
     </div>

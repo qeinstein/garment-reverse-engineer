@@ -299,6 +299,52 @@ describe('Hugging Face Client & Reconstruction Pipeline', () => {
       expect(res.data.garmentIR.metadata.name).toBe(PENCIL_SKIRT_FIXTURE.metadata.name);
     });
 
+    it('correctly parses multipart/form-data requests with binary files', async () => {
+      const mockPredict = vi.fn().mockResolvedValue({
+        data: [JSON.stringify(PENCIL_SKIRT_FIXTURE), null, null],
+      });
+
+      vi.mocked(Client.connect).mockResolvedValue({
+        predict: mockPredict,
+      } as any);
+
+      const boundary = '----WebKitFormBoundaryXyZ123';
+      const multipartBody = Buffer.from(
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="front"; filename="front.png"\r\n` +
+        `Content-Type: image/png\r\n\r\n` +
+        `front-img-data\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="right"; filename="right.png"\r\n` +
+        `Content-Type: image/png\r\n\r\n` +
+        `right-img-data\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="back"; filename="back.png"\r\n` +
+        `Content-Type: image/png\r\n\r\n` +
+        `back-img-data\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="left"; filename="left.png"\r\n` +
+        `Content-Type: image/png\r\n\r\n` +
+        `left-img-data\r\n` +
+        `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="variant"\r\n\r\n` +
+        `GCD_ori\r\n` +
+        `--${boundary}--\r\n`
+      );
+
+      const { req, res } = createMockReqRes('POST');
+      req.headers = { 'content-type': `multipart/form-data; boundary=${boundary}` };
+      req.body = multipartBody;
+
+      await handler(req, res);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.data.status).toBe('success');
+      expect(mockPredict).toHaveBeenCalledWith('/reconstruct', expect.objectContaining({
+        variant: 'GCD_ori',
+      }));
+    });
+
     it('returns 502 INVALID_GARMENT_IR if predicted payload fails validation', async () => {
       const invalidIR = { schema_version: '0.1.0', metadata: {}, panels: [] };
       vi.mocked(Client.connect).mockResolvedValue({

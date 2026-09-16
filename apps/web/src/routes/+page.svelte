@@ -29,6 +29,11 @@
   });
 </script>
 
+<svelte:head>
+  <title>Seamer - Open Source AI Pattern Reconstruction & Garment CAD</title>
+  <meta name="description" content="Free digital pattern drafting and AI garment reverse-engineering software. Reconstruct 2D patterns and 3D cloth drape from photos." />
+</svelte:head>
+
 <div class="hero min-h-[50vh] bg-base-200">
   <div class="hero-content text-center">
     <div class="max-w-2xl">

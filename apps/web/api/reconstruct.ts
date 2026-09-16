@@ -95,6 +95,93 @@ function repairGarmentIR(rawGarment: GarmentIR): GarmentIR {
   return garment;
 }
 
+async function parseMultipartRequest(req: VercelRequest): Promise<{ fields: Record<string, string>; files: Record<string, Blob> }> {
+  const contentType = req.headers['content-type'] || '';
+  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
+  if (!boundaryMatch) {
+    return { fields: {}, files: {} };
+  }
+  const boundary = boundaryMatch[1] || boundaryMatch[2];
+
+  let buffer: Buffer;
+  if (Buffer.isBuffer(req.body)) {
+    buffer = req.body;
+  } else if (typeof req.body === 'string') {
+    buffer = Buffer.from(req.body);
+  } else {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    buffer = Buffer.concat(chunks);
+  }
+
+  const fields: Record<string, string> = {};
+  const files: Record<string, Blob> = {};
+
+  const delimiter = Buffer.from(`--${boundary}`);
+  let start = buffer.indexOf(delimiter);
+
+  while (start !== -1) {
+    const nextStart = buffer.indexOf(delimiter, start + delimiter.length);
+    if (nextStart === -1) break;
+
+    const partBuffer = buffer.subarray(start + delimiter.length, nextStart);
+    start = nextStart;
+
+    let sepIndex = partBuffer.indexOf('\r\n\r\n');
+    let headerOffset = 4;
+    if (sepIndex === -1) {
+      sepIndex = partBuffer.indexOf('\n\n');
+      headerOffset = 2;
+    }
+    if (sepIndex === -1) continue;
+
+    const headersStr = partBuffer.subarray(0, sepIndex).toString('utf8');
+    // strip boundary newline (\r\n) from end of part
+    let bodyEnd = partBuffer.length;
+    if (partBuffer[bodyEnd - 1] === 10) bodyEnd--; // \n
+    if (partBuffer[bodyEnd - 1] === 13) bodyEnd--; // \r
+    const bodyBuffer = partBuffer.subarray(sepIndex + headerOffset, bodyEnd);
+
+    const dispMatch = headersStr.match(/name="([^"]+)"/);
+    if (!dispMatch) continue;
+    const name = dispMatch[1];
+
+    const filenameMatch = headersStr.match(/filename="([^"]+)"/);
+    const ctMatch = headersStr.match(/Content-Type:\s*([^\r\n]+)/i);
+    const mimeType = ctMatch ? ctMatch[1].trim() : 'application/octet-stream';
+
+    if (filenameMatch) {
+      files[name] = new Blob([bodyBuffer], { type: mimeType });
+    } else {
+      fields[name] = bodyBuffer.toString('utf8').trim();
+    }
+  }
+
+  return { fields, files };
+}
+
+function toBlobOrData(input: unknown): Blob | unknown {
+  if (typeof input === 'string') {
+    if (input.startsWith('data:')) {
+      const match = input.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        return new Blob([Buffer.from(match[2], 'base64')], { type: match[1] });
+      }
+    }
+    if (input.length > 200 && !input.startsWith('http') && !input.startsWith('/')) {
+      try {
+        const buf = Buffer.from(input, 'base64');
+        return new Blob([buf], { type: 'image/png' });
+      } catch {
+        // keep as is
+      }
+    }
+  }
+  return input;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -111,7 +198,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const startTime = Date.now();
 
   try {
-    const { front, right, back, left, variant } = req.body || {};
+    let front = req.body?.front;
+    let right = req.body?.right;
+    let back = req.body?.back;
+    let left = req.body?.left;
+    let variant = req.body?.variant;
+
+    const contentType = req.headers?.['content-type'] || '';
+    if ((!front || !right || !back || !left) && contentType.includes('multipart/form-data')) {
+      const { fields, files } = await parseMultipartRequest(req);
+      front = files['front'] || toBlobOrData(fields['front']);
+      right = files['right'] || toBlobOrData(fields['right']);
+      back = files['back'] || toBlobOrData(fields['back']);
+      left = files['left'] || toBlobOrData(fields['left']);
+      if (fields['variant']) variant = fields['variant'];
+    }
+
+    front = toBlobOrData(front);
+    right = toBlobOrData(right);
+    back = toBlobOrData(back);
+    left = toBlobOrData(left);
 
     if (!front || !right || !back || !left) {
       return res.status(400).json({

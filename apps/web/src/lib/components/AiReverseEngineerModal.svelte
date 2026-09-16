@@ -28,6 +28,9 @@
   let loading = $state(false);
   let statusMessage = $state('');
   let errorMessage = $state<string | null>(null);
+  let elapsedSeconds = $state(0);
+  let timerInterval: any = null;
+  let abortController: AbortController | null = null;
 
   const viewSlots: { key: ViewLabel; label: string; angle: string }[] = [
     { key: 'front', label: 'Front View', angle: '0°' },
@@ -36,17 +39,39 @@
     { key: 'left', label: 'Left Side', angle: '270°' }
   ];
 
-  function handleFileSelect(key: ViewLabel, e: Event) {
-    const target = e.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) return;
+  let missingSlots = $derived(
+    viewSlots.filter((slot) => !views[slot.key].file && !views[slot.key].dataUrl)
+  );
 
+  let uploadedCount = $derived(4 - missingSlots.length);
+
+  function processFile(key: ViewLabel, file: File) {
+    if (!file.type.startsWith('image/')) {
+      toastError(`Invalid file type for ${key}: only images (PNG, JPEG, WebP) are supported.`);
+      return;
+    }
     views[key].file = file;
     const reader = new FileReader();
     reader.onload = (re) => {
       views[key].dataUrl = re.target?.result as string;
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleFileSelect(key: ViewLabel, e: Event) {
+    const target = e.target as HTMLInputElement;
+    const file = target.files?.[0];
+    if (!file) return;
+    processFile(key, file);
+  }
+
+  function handleDrop(key: ViewLabel, e: DragEvent) {
+    e.preventDefault();
+    if (loading) return;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) {
+      processFile(key, file);
+    }
   }
 
   async function loadSampleSkirt() {
@@ -69,6 +94,20 @@
     }
   }
 
+  function cancelReconstruction() {
+    if (abortController) {
+      abortController.abort();
+      abortController = null;
+    }
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    loading = false;
+    statusMessage = '';
+    toastError('Reconstruction cancelled by user.');
+  }
+
   async function startReconstruction() {
     errorMessage = null;
 
@@ -88,7 +127,17 @@
     }
 
     loading = true;
+    elapsedSeconds = 0;
     statusMessage = 'Connecting to Hugging Face ZeroGPU Space...';
+
+    timerInterval = setInterval(() => {
+      elapsedSeconds++;
+      if (elapsedSeconds > 8 && elapsedSeconds <= 25) {
+        statusMessage = 'Waking up ZeroGPU container & allocating GPU slice (cold start ~30s)...';
+      } else if (elapsedSeconds > 25) {
+        statusMessage = 'Running ReWeaver neural network prediction & curve fitting...';
+      }
+    }, 1000);
 
     try {
       const res = await reconstructGarment(inputs, {
@@ -110,6 +159,10 @@
       errorMessage = err?.message || String(err);
       toastError(errorMessage || 'Inference error');
     } finally {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
       loading = false;
       statusMessage = '';
     }
@@ -118,22 +171,22 @@
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape' && !loading) oncancel(); }} />
 
-<div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-  <div class="bg-base-100 rounded-xl shadow-2xl max-w-2xl w-full border border-base-300 overflow-hidden flex flex-col max-h-[90vh]">
+<div class="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="modal-ai-title">
+  <div class="bg-base-100 rounded-xl shadow-2xl max-w-2xl w-full border border-base-300 overflow-hidden flex flex-col max-h-[92vh] my-auto">
     <!-- Header -->
-    <div class="px-6 py-4 border-b border-base-300 flex items-center justify-between bg-base-200/50">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🧵</span>
-        <div>
-          <h3 class="font-bold text-lg leading-tight font-lexend">AI Garment Reverse Engineer</h3>
-          <p class="text-xs opacity-60">Reconstruct editable 2D sewing patterns and 3D cloth drape from 4 photos</p>
+    <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-base-300 flex items-center justify-between bg-base-200/50 shrink-0">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="text-2xl shrink-0">🧵</span>
+        <div class="min-w-0">
+          <h3 id="modal-ai-title" class="font-bold text-base sm:text-lg leading-tight font-lexend truncate">AI Garment Reverse Engineer</h3>
+          <p class="text-xs opacity-60 truncate">Reconstruct editable 2D sewing patterns and 3D cloth drape from 4 photos</p>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm btn-circle" onclick={oncancel} disabled={loading}>✕</button>
+      <button class="btn btn-ghost btn-sm btn-circle shrink-0" onclick={oncancel} disabled={loading} aria-label="Close modal">✕</button>
     </div>
 
     <!-- Body -->
-    <div class="p-6 overflow-y-auto space-y-5">
+    <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
       {#if errorMessage}
         <div class="alert alert-error text-sm py-2">
           <span>{errorMessage}</span>
@@ -141,21 +194,32 @@
       {/if}
 
       <!-- Quick sample banner -->
-      <div class="flex items-center justify-between bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs gap-2">
         <span>Try it instantly with reference images:</span>
-        <button class="btn btn-xs btn-primary font-medium" onclick={loadSampleSkirt} disabled={loading}>
+        <button class="btn btn-xs btn-primary font-medium shrink-0" onclick={loadSampleSkirt} disabled={loading}>
           Load Sample Pencil Skirt
         </button>
       </div>
 
       <!-- 4 Viewports Upload Grid -->
       <div>
-        <div class="label py-1"><span class="label-text font-semibold text-xs uppercase tracking-wider opacity-70">4 Viewpoint Photos (Neutral Background)</span></div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="flex items-center justify-between py-1">
+          <span class="label-text font-semibold text-xs uppercase tracking-wider opacity-70">4 Viewpoint Photos (Neutral Background)</span>
+          {#if uploadedCount === 4}
+            <span class="badge badge-success badge-xs gap-1 font-medium">✓ Ready (4/4)</span>
+          {:else if uploadedCount > 0}
+            <span class="badge badge-warning badge-xs gap-1 font-medium">{uploadedCount}/4 (Missing {missingSlots.map(s => s.label).join(', ')})</span>
+          {:else}
+            <span class="badge badge-ghost badge-xs opacity-60">0/4 Uploaded</span>
+          {/if}
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {#each viewSlots as slot}
             <div class="flex flex-col items-center">
               <label
                 class="w-full aspect-square rounded-lg border-2 border-dashed border-base-300 hover:border-primary/60 transition-colors flex flex-col items-center justify-center p-2 cursor-pointer bg-base-200/40 relative overflow-hidden group"
+                ondragover={(e) => { e.preventDefault(); }}
+                ondrop={(e) => handleDrop(slot.key, e)}
               >
                 <input
                   type="file"
@@ -214,26 +278,31 @@
 
       <!-- Status Indicator -->
       {#if loading}
-        <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg border border-base-300">
-          <span class="loading loading-spinner loading-md text-primary"></span>
-          <div class="text-xs">
-            <div class="font-semibold text-primary">{statusMessage}</div>
-            <div class="opacity-60 text-[10px]">ZeroGPU dynamically allocates an Nvidia A100/L40S slice for ~3.5s</div>
+        <div class="flex items-center justify-between p-3 bg-base-200 rounded-lg border border-base-300">
+          <div class="flex items-center gap-3">
+            <span class="loading loading-spinner loading-md text-primary shrink-0"></span>
+            <div class="text-xs">
+              <div class="font-semibold text-primary">{statusMessage}</div>
+              <div class="opacity-60 text-[10px]">Elapsed: {elapsedSeconds}s · ZeroGPU allocates an Nvidia A100/L40S slice for ~3.5s</div>
+            </div>
           </div>
+          <button class="btn btn-xs btn-outline btn-error shrink-0" onclick={cancelReconstruction}>
+            Cancel
+          </button>
         </div>
       {/if}
     </div>
 
-    <!-- Footer Actions -->
-    <div class="px-6 py-4 border-t border-base-300 flex items-center justify-between bg-base-200/50">
+    <!-- Footer Actions (Sticky on Mobile) -->
+    <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-base-300 flex items-center justify-between bg-base-200/80 backdrop-blur-sm sticky bottom-0 shrink-0">
       <button class="btn btn-sm btn-ghost" onclick={oncancel} disabled={loading}>
-        Cancel
+        Close
       </button>
 
       <button
         class="btn btn-sm btn-primary gap-2 font-semibold shadow-md"
         onclick={startReconstruction}
-        disabled={loading}
+        disabled={loading || uploadedCount < 4}
       >
         {#if loading}
           <span class="loading loading-spinner loading-xs"></span>

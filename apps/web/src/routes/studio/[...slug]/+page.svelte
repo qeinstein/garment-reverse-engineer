@@ -81,8 +81,14 @@
   import { autoSaveSeconds } from '$lib/stores/pattern';
   import { referenceSspTemplates } from '$lib/data/referenceSspTemplates';
   import AiReverseEngineerModal from '$lib/components/AiReverseEngineerModal.svelte';
+  import GarmentIrViewerModal from '$lib/components/GarmentIrViewerModal.svelte';
+  import type { GarmentIR } from '@garment-ir/core';
+  import { PENCIL_SKIRT_FIXTURE } from '@garment-ir/core';
 
   let showAiModal = $state(false);
+  let showGarmentIrModal = $state(false);
+  let currentGarmentIR = $state<GarmentIR | null>(null);
+  let mobileAdvisoryDismissed = $state(false);
   let showCommandPalette = $state(false);
   let showBugReport = $state(false);
   let showPrintDialog = $state(false);
@@ -261,7 +267,10 @@
   const getPatternSnapshot = () => $state.snapshot(currentPattern) as Pattern;
 
   onMount(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1200) showLeftPanel = false;
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 1200) showLeftPanel = false;
+      if (window.innerWidth < 1024) showRightPanel = false;
+    }
     const disposeCommandApi = installSeamerAutomation();
     const unsubscribeEditor = pattern.subscribe((next) => {
       if (JSON.stringify(next) !== JSON.stringify(currentPattern)) currentPattern = next;
@@ -295,6 +304,7 @@
         }
       } else {
         await loadTemplate(DEFAULT_STUDIO_TEMPLATE);
+        currentGarmentIR = PENCIL_SKIRT_FIXTURE as GarmentIR;
       }
     })();
 
@@ -936,22 +946,33 @@
           {/each}
         </ul>
       </div>
+      {#if currentGarmentIR}
+        <button
+          class="btn btn-xs btn-outline btn-accent gap-1 font-semibold"
+          onclick={() => (showGarmentIrModal = true)}
+          title="Inspect GarmentIR neural reconstruction diagnostics and panel confidence"
+          aria-label="View AI reconstruction diagnostics"
+        >
+          <span>📊</span> <span class="hidden md:inline">AI Diagnostics</span>
+        </button>
+      {/if}
       <button
         class="btn btn-xs btn-primary gap-1 font-semibold shadow-sm"
         onclick={() => (showAiModal = true)}
         title="AI Reverse Engineer: reconstruct 2D pattern & 3D cloth drape from 4 photos"
+        aria-label="AI Reverse Engineer from 4 photos"
       >
         <span>🧵</span> <span class="hidden sm:inline">AI Reverse Engineer</span>
       </button>
-      <div class="join join-horizontal" data-tour-id="tour-view-mode">
-        <button class="join-item btn btn-xs" class:btn-active={viewMode === '2d'} onclick={() => setViewMode('2d')}>2D</button>
-        <button class="join-item btn btn-xs" class:btn-active={viewMode === 'both'} onclick={() => setViewMode('both')}>Both</button>
-        <button class="join-item btn btn-xs" class:btn-active={viewMode === '3d'} onclick={() => setViewMode('3d')}>3D</button>
+      <div class="join join-horizontal" data-tour-id="tour-view-mode" role="group" aria-label="Editor View Mode">
+        <button class="join-item btn btn-xs" class:btn-active={viewMode === '2d'} aria-pressed={viewMode === '2d'} onclick={() => setViewMode('2d')}>2D</button>
+        <button class="join-item btn btn-xs" class:btn-active={viewMode === 'both'} aria-pressed={viewMode === 'both'} onclick={() => setViewMode('both')}>Both</button>
+        <button class="join-item btn btn-xs" class:btn-active={viewMode === '3d'} aria-pressed={viewMode === '3d'} onclick={() => setViewMode('3d')}>3D</button>
       </div>
     </div>
     <div class="flex items-center gap-1">
-      <button class="btn btn-ghost btn-xs" onclick={handleUndo} disabled={!$undoLabel} title={$undoLabel ? `Undo ${$undoLabel} (Ctrl+Z)` : 'Nothing to undo'}>&#x21A9;</button>
-      <button class="btn btn-ghost btn-xs" onclick={handleRedo} disabled={!$redoLabel} title={$redoLabel ? `Redo ${$redoLabel} (Ctrl+Shift+Z)` : 'Nothing to redo'}>&#x21AA;</button>
+      <button class="btn btn-ghost btn-xs" onclick={handleUndo} disabled={!$undoLabel} title={$undoLabel ? `Undo ${$undoLabel} (Ctrl+Z)` : 'Nothing to undo'} aria-label="Undo last edit">&#x21A9;</button>
+      <button class="btn btn-ghost btn-xs" onclick={handleRedo} disabled={!$redoLabel} title={$redoLabel ? `Redo ${$redoLabel} (Ctrl+Shift+Z)` : 'Nothing to redo'} aria-label="Redo last undone edit">&#x21AA;</button>
       <div class="dropdown dropdown-end">
         <div role="button" tabindex="0" class="btn btn-ghost btn-xs" data-testid="import-menu-trigger">Import</div>
         <ul class="dropdown-content menu bg-base-200 rounded-box z-50 w-64 p-2 shadow text-sm">
@@ -998,8 +1019,8 @@
       </div>
       <button class="btn btn-ghost btn-xs" onclick={handleNew}>New</button>
       <button class="btn btn-xs" class:btn-accent={!saved} class:btn-ghost={saved} onclick={handleSave} data-tour-id="tour-save">{saved ? 'Saved' : 'Save'}</button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showLeftPanel = !showLeftPanel} title="Toggle left panel">&#x2630;</button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showRightPanel = !showRightPanel} title="Toggle right panel">&#x25B6;</button>
+      <button class="btn btn-ghost btn-xs" onclick={() => showLeftPanel = !showLeftPanel} title="Toggle left panel" aria-label="Toggle left panel" aria-pressed={showLeftPanel}>&#x2630;</button>
+      <button class="btn btn-ghost btn-xs" onclick={() => showRightPanel = !showRightPanel} title="Toggle right panel" aria-label="Toggle right panel" aria-pressed={showRightPanel}>&#x25B6;</button>
       <button class="btn btn-xs" class:btn-active={showObjectBrowser} onclick={() => showObjectBrowser = !showObjectBrowser} title="Toggle object browser" data-testid="object-browser-toggle">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">view_list</span>
       </button>
@@ -1026,6 +1047,13 @@
       </button>
     </div>
   </div>
+
+  {#if !mobileAdvisoryDismissed}
+    <div class="md:hidden bg-info/15 text-info-content border-b border-info/20 px-3 py-1 flex items-center justify-between text-xs shrink-0">
+      <span>📱 CAD drafting is optimized for tablet/desktop screens.</span>
+      <button class="btn btn-ghost btn-xs btn-circle ml-2" onclick={() => (mobileAdvisoryDismissed = true)} aria-label="Dismiss advisory">✕</button>
+    </div>
+  {/if}
 
   <div class="flex-1 flex overflow-hidden">
     {#if showLeftPanel}
@@ -1064,7 +1092,7 @@
 
   {#if viewMode !== '3d'}
     <div class="h-10 border-t bg-base-200 shrink-0" data-tour-id="tour-toolbar">
-      {#key $patternEditor}<StudioToolbar {currentPattern} editor={$patternEditor} onchange={handlePatternUpdate} onai={() => (showAiModal = true)} />{/key}
+      {#key $patternEditor}<StudioToolbar {currentPattern} editor={$patternEditor} onchange={handlePatternUpdate} />{/key}
     </div>
   {/if}
 
@@ -1096,11 +1124,18 @@
 {#if rulDialog}<SizesDialog table={rulDialog.table} onapply={applyRul} oncancel={() => (rulDialog = null)} />{/if}
 {#if showAiModal}
   <AiReverseEngineerModal
-    onapply={async (p) => {
+    onapply={async (p, gIR) => {
+      currentGarmentIR = gIR;
       await applyImported(p);
       showAiModal = false;
     }}
     oncancel={() => (showAiModal = false)}
+  />
+{/if}
+{#if showGarmentIrModal && currentGarmentIR}
+  <GarmentIrViewerModal
+    garmentIR={currentGarmentIR}
+    onclose={() => (showGarmentIrModal = false)}
   />
 {/if}
 
