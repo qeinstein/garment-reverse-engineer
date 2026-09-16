@@ -150,8 +150,9 @@ export function reweaverToGarmentIR(
     const pIdx = flatten.panel_index ?? (Number.parseInt(panelKey, 10) || 0);
     const panelId = `panel_${pIdx}`;
 
-    // ReWeaver scale_pred is in meters per normalized unit -> convert to mm (x 1000)
-    const scaleMm = (flatten.scale_pred ?? 1.0) * 1000.0;
+    // ReWeaver scale_pred: if in cm (>5.0), multiply by 10 for mm; if in meters (<=5.0), multiply by 1000 for mm
+    const rawScale = flatten.scale_pred ?? 1.0;
+    const scaleMm = rawScale > 5.0 ? rawScale * 10.0 : rawScale * 1000.0;
 
     // Find active curves for this patch from connectivity matrix
     const activeCurveIndices: number[] = [];

@@ -132,6 +132,54 @@ export function repairGarmentIR(rawGarment: GarmentIR): GarmentIR {
     validPanelEdgeIds.set(panel.id, edgeIdSet);
   }
 
+  // Check if coordinates were scaled by 1000 instead of 10 (e.g. 50,000mm instead of 500mm)
+  let maxCoordSpan = 0;
+  for (const panel of garment.panels) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const edge of panel.boundary?.edges ?? []) {
+      for (const pt of [edge.start, edge.end, ...(edge.polyline_samples ?? [])]) {
+        if (pt) {
+          minX = Math.min(minX, pt.x); maxX = Math.max(maxX, pt.x);
+          minY = Math.min(minY, pt.y); maxY = Math.max(maxY, pt.y);
+        }
+      }
+    }
+    if (Number.isFinite(minX) && Number.isFinite(maxX)) {
+      maxCoordSpan = Math.max(maxCoordSpan, maxX - minX, maxY - minY);
+    }
+  }
+
+  // If any single pattern piece is wider than 2.5 meters (2500 mm), it was scaled by 100x from cm
+  if (maxCoordSpan > 2500) {
+    const scaleFactor = 0.01;
+    for (const panel of garment.panels) {
+      for (const edge of panel.boundary?.edges ?? []) {
+        edge.start.x *= scaleFactor;
+        edge.start.y *= scaleFactor;
+        edge.end.x *= scaleFactor;
+        edge.end.y *= scaleFactor;
+        if (edge.polyline_samples) {
+          for (const s of edge.polyline_samples) {
+            s.x *= scaleFactor;
+            s.y *= scaleFactor;
+          }
+        }
+        if (edge.control_points) {
+          for (const cp of edge.control_points) {
+            cp.x *= scaleFactor;
+            cp.y *= scaleFactor;
+          }
+        }
+      }
+      for (const feat of panel.internal_features ?? []) {
+        for (const pt of feat.points) {
+          pt.x *= scaleFactor;
+          pt.y *= scaleFactor;
+        }
+      }
+    }
+  }
+
   // Sanitize seams: retain only seams whose edge references exist on valid panels
   if (garment.seams) {
     garment.seams = garment.seams
@@ -354,6 +402,7 @@ export function garmentIRToSeamer(rawGarment: GarmentIR): SeamerPattern {
       seamAllowance: panel.seam_allowance_mm,
       mainPaths,
       internalPaths,
+      legacyGeometry: { format: 'seamscape-json', raw: {} as any },
       settings3d: {
         arrangement,
         enable3d: true,
@@ -361,7 +410,7 @@ export function garmentIRToSeamer(rawGarment: GarmentIR): SeamerPattern {
         flipNormals: panel.placement_3d?.flip_normal ?? false,
         filterExternalCollisionsByClothNormal: false,
         collisionLayer: 0,
-        particleDistance: 10,
+        particleDistance: 20,
         savedPositions: []
       }
     });

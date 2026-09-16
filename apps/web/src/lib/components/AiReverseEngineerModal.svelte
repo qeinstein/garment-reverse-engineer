@@ -94,6 +94,31 @@
     }
   }
 
+  async function loadPrecomputedSample() {
+    errorMessage = null;
+    loading = true;
+    statusMessage = 'Loading pre-computed ReWeaver neural output...';
+    try {
+      if (uploadedCount < 4) {
+        await loadSampleSkirt();
+      }
+      const res = await fetch('/sample_views/pencil_skirt_garment_ir.json');
+      if (!res.ok) throw new Error(`HTTP ${res.status} loading sample garment JSON`);
+      const gIR = await res.json();
+      statusMessage = 'Converting GarmentIR to Seamer CAD pattern...';
+      const seamerPattern = garmentIRToSeamer(gIR);
+      toastSuccess(`Loaded pre-computed sample Pencil Skirt (${gIR.panels.length} panels, ${gIR.seams.length} seams)!`);
+      onapply(seamerPattern, gIR);
+    } catch (err: any) {
+      console.error('Failed to load sample GarmentIR:', err);
+      errorMessage = err?.message || String(err);
+      toastError(errorMessage);
+    } finally {
+      loading = false;
+      statusMessage = '';
+    }
+  }
+
   function cancelReconstruction() {
     if (abortController) {
       abortController.abort();
@@ -188,17 +213,31 @@
     <!-- Body -->
     <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
       {#if errorMessage}
-        <div class="alert alert-error text-sm py-2">
-          <span>{errorMessage}</span>
+        <div class="alert alert-error text-xs py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{errorMessage}</span>
+          </div>
+          <button class="btn btn-xs btn-outline bg-base-100/20 text-xs shrink-0 self-end sm:self-auto" onclick={loadPrecomputedSample} disabled={loading}>
+            ⚡ Load Pre-computed Sample
+          </button>
         </div>
       {/if}
 
       <!-- Quick sample banner -->
       <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs gap-2">
-        <span>Try it instantly with reference images:</span>
-        <button class="btn btn-xs btn-primary font-medium shrink-0" onclick={loadSampleSkirt} disabled={loading}>
-          Load Sample Pencil Skirt
-        </button>
+        <div class="flex items-center gap-1.5 font-medium">
+          <span>✨</span>
+          <span>Sample Pencil Skirt (4 angles):</span>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button class="btn btn-xs btn-ghost border border-primary/30 font-medium shrink-0" onclick={loadSampleSkirt} disabled={loading}>
+            Load 4 Photos
+          </button>
+          <button class="btn btn-xs btn-primary font-medium shrink-0" onclick={loadPrecomputedSample} disabled={loading} title="Instantly load real ReWeaver output without waiting for GPU queue">
+            ⚡ Instant Model Demo
+          </button>
+        </div>
       </div>
 
       <!-- 4 Viewports Upload Grid -->

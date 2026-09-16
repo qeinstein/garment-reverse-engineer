@@ -106,6 +106,7 @@ export interface SeamerPiece {
   seamAllowance?: number;
   mainPaths: SeamerPiecePath[];
   internalPaths: SeamerPiecePath[];
+  legacyGeometry?: { format: string; raw?: unknown };
   settings3d: SeamerPieceSettings3D;
   hideEditorPoints?: boolean;
 }

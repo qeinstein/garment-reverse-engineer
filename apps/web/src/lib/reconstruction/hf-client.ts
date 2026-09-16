@@ -315,6 +315,14 @@ export function classifyError(err: unknown): ReconstructionError {
     };
   }
 
+  if (str.includes('no gpu was available') || str.includes('gpu queue')) {
+    return {
+      code: 'GPU_BUSY',
+      message: 'ZeroGPU queue is currently at capacity (no GPU slice available after 60s). You can retry in a moment, or test instantly with the pre-computed sample.',
+      details: err,
+    };
+  }
+
   if (str.includes('sleep') || str.includes('pause') || str.includes('503') || str.includes('building')) {
     return {
       code: 'SPACE_UNAVAILABLE',

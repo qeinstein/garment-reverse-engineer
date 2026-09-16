@@ -71,9 +71,9 @@ def reweaver_to_garment_ir(
         p_idx = flatten_info.panel_index
         panel_id = f"panel_{p_idx}"
 
-        # Scale factor from ReWeaver is in meters per normalized unit
-        # Convert to millimeters (x 1000)
-        scale_mm = float(flatten_info.scale_pred) * 1000.0
+        # Scale factor from ReWeaver: if in cm (>5.0), scale to mm (x 10); if in meters (<=5.0), scale to mm (x 1000)
+        raw_scale = float(flatten_info.scale_pred)
+        scale_mm = raw_scale * 10.0 if raw_scale > 5.0 else raw_scale * 1000.0
 
         edges = []
         num_edges = len(flatten_info.edge_points)
