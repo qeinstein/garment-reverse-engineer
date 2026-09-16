@@ -6,5 +6,5 @@ packages:
   - 'vendor/seamer-studio/vendor/body-model'
   - 'vendor/atelier/packages/*'
 allowBuilds:
-  core-js: set this to true or false
+  core-js: false
   esbuild: true
