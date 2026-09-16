@@ -11,7 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const spaceUrl =
     process.env.PUBLIC_HF_REWEAVER_SPACE_URL ||
     process.env.HF_SPACE_URL ||
-    'https://huggingface.co/spaces/qeinstein/reweaver-zero';
+    'https://huggingface.co/spaces/Fluxx08/reweaver-zero';
 
   // Server-only secret token (never exposed to browser)
   const hfToken = process.env.HF_TOKEN;

@@ -15,7 +15,7 @@
   let variant = $state<'GCD_ori' | 'tileable'>('GCD_ori');
   let spaceUrl = $state(
     (typeof import.meta !== 'undefined' && (import.meta as any).env?.PUBLIC_HF_REWEAVER_SPACE_URL) ||
-    'https://huggingface.co/spaces/Fluxx08/reweaver-zero'
+    'Fluxx08/reweaver-zero'
   );
 
   let views = $state<Record<ViewLabel, { file: File | null; dataUrl: string | null }>>({
@@ -150,7 +150,7 @@
 
       <!-- 4 Viewports Upload Grid -->
       <div>
-        <label class="label py-1"><span class="label-text font-semibold text-xs uppercase tracking-wider opacity-70">4 Viewpoint Photos (Neutral Background)</span></label>
+        <div class="label py-1"><span class="label-text font-semibold text-xs uppercase tracking-wider opacity-70">4 Viewpoint Photos (Neutral Background)</span></div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {#each viewSlots as slot}
             <div class="flex flex-col items-center">
