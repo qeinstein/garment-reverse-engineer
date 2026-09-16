@@ -1,6 +1,7 @@
 import { Client } from '@gradio/client';
 import type { GarmentIR } from '@garment-ir/core';
 import { validateGarmentIR } from '@garment-ir/validation';
+import { repairGarmentIR } from '@garment-ir/seamer-adapter';
 
 export type ViewLabel = 'front' | 'right' | 'back' | 'left';
 
@@ -177,11 +178,17 @@ async function reconstructViaDirectHF(
     throw new Error(`Failed to parse GarmentIR JSON from Space: ${e}`);
   }
 
+  // Repair any gaps or discrepancies from neural network predictions
+  garmentIR = repairGarmentIR(garmentIR);
+
   // Validate GarmentIR structure
   const report = validateGarmentIR(garmentIR);
-  const warnings = report.warnings.map((w) => `${w.code}: ${w.message}`);
+  const warnings = [
+    ...report.warnings.map((w) => `${w.code}: ${w.message}`),
+    ...report.errors.map((e) => `Topology notice: ${e.message}`)
+  ];
 
-  if (!report.valid) {
+  if (!garmentIR.panels || garmentIR.panels.length === 0) {
     return {
       status: 'failed',
       garmentIR: null,

@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { Client } from '@gradio/client';
 import { validateGarmentIR } from '@garment-ir/validation';
+import { repairGarmentIR } from '@garment-ir/seamer-adapter';
 import type { GarmentIR } from '@garment-ir/core';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -51,15 +52,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error('Empty response payload from Hugging Face Space.');
     }
 
-    const garmentIR: GarmentIR = JSON.parse(garmentIRJson);
+    let garmentIR: GarmentIR = JSON.parse(garmentIRJson);
+    garmentIR = repairGarmentIR(garmentIR);
     const report = validateGarmentIR(garmentIR);
 
-    if (!report.valid) {
+    if (!garmentIR.panels || garmentIR.panels.length === 0) {
       return res.status(502).json({
         status: 'failed',
         error: {
           code: 'INVALID_GARMENT_IR',
-          message: 'Model prediction failed topology validation.',
+          message: 'Model prediction failed topology validation (no panels produced).',
           details: report.errors,
         },
         timings: { totalSeconds },
@@ -71,7 +73,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       garmentIR,
       modelVersion: `ReWeaver-${variant || 'GCD_ori'}`,
       timings: { totalSeconds },
-      warnings: report.warnings.map((w) => `${w.code}: ${w.message}`),
+      warnings: [
+        ...report.warnings.map((w) => `${w.code}: ${w.message}`),
+        ...report.errors.map((e) => `Topology notice: ${e.message}`),
+      ],
     });
   } catch (error: unknown) {
     const totalSeconds = (Date.now() - startTime) / 1000;

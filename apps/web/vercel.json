@@ -5,11 +5,11 @@
   "rewrites": [
     {
       "source": "/studio/:path*",
-      "destination": "/404.html"
+      "destination": "/studio"
     },
     {
       "source": "/flow/:path*",
-      "destination": "/404.html"
+      "destination": "/flow"
     }
   ]
 }

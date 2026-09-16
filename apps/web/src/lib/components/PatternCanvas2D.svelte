@@ -83,7 +83,10 @@
   let canvasW = $state(800);
   let canvasH = $state(600);
   let isPanning = $state(false);
+  let isSpaceDown = $state(false);
   let isDragging = $state(false);
+  let dragPieceIds: Set<string> | null = null;
+  let dragPieceStarts: Map<string, Vec2> | null = null;
   let dragPointId: string | null = $state(null);
   let dragInvert: ((w: Vec2) => Vec2) | null = null;
   let dragStartWorld: Vec2 | null = null;
@@ -762,9 +765,19 @@
         e.preventDefault();
         const f = e.key === '-' ? 1 / 1.25 : 1.25;
         zoom.update((z) => Math.max(0.02, Math.min(20, z * f))); // min matches the toolbar's 0.02 clamp
+      } else if (e.code === 'Space' && !drawing && !penDraft.length && !isSpaceDown) {
+        isSpaceDown = true;
+        render();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        isSpaceDown = false;
+        render();
       }
     };
     window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
     isDark = isDarkTheme();
     const unsubTheme = onThemeChange(() => { isDark = isDarkTheme(); render(); });
     render();
@@ -778,6 +791,7 @@
       unsubSeamTool();
       unsubTheme();
       window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keyup', onKeyUp);
     };
   });
 
@@ -3165,7 +3179,12 @@
       return;
     }
     const tool = $selectedTool;
-    if (tool === 'pan' || e.button === 1 || e.metaKey || e.ctrlKey || e.altKey) { isPanning = true; return; }
+    if (isSpaceDown || tool === 'pan' || e.button === 1 || e.metaKey || e.ctrlKey || e.altKey) {
+      isPanning = true;
+      dragStartX = pos.x;
+      dragStartY = pos.y;
+      return;
+    }
     if (tool === 'measure') { measureClick(pos); return; }
     if (tool === 'point') {
       // place on a nearby path (or midway between two), like the original's getPickedPoint;
@@ -3245,6 +3264,12 @@
           setPieceIds([owner.piece.id]);
           setPathIds([owner.pp.path]);
           setPointIds([]);
+          dragPieceIds = new Set([owner.piece.id]);
+          dragStartWorld = { ...toPattern(pos.x, pos.y) };
+          dragPieceStarts = new Map([
+            [owner.piece.id, { x: owner.piece.position?.x ?? 0, y: owner.piece.position?.y ?? 0 }]
+          ]);
+          isDragging = true;
           render();
           return;
         }
@@ -3266,9 +3291,27 @@
         if (pointInPolygon(pat, pieceDisplayOutline(currentPattern, piece, paths, points, 6))) { hitPiece = piece.id; break; }
       }
       if (hitPiece) {
-        setPointIds([]);
-        setPathIds([]);
-        setPieceIds([hitPiece]);
+        const curPieces = new Set(pieceIds);
+        const wasSelected = curPieces.has(hitPiece);
+        if (e.shiftKey) {
+          if (wasSelected) curPieces.delete(hitPiece); else curPieces.add(hitPiece);
+          setPieceIds(curPieces);
+        } else if (!wasSelected) {
+          setPointIds([]);
+          setPathIds([]);
+          setPieceIds([hitPiece]);
+          curPieces.clear();
+          curPieces.add(hitPiece);
+        }
+        dragPieceIds = new Set(curPieces);
+        dragStartWorld = { ...pat };
+        dragPieceStarts = new Map();
+        for (const p of currentPattern.pieces) {
+          if (dragPieceIds.has(p.id)) {
+            dragPieceStarts.set(p.id, { x: p.position?.x ?? 0, y: p.position?.y ?? 0 });
+          }
+        }
+        isDragging = true;
       } else {
         // empty space → start a marquee (rubber-band) selection
         isMarquee = true;
@@ -3319,6 +3362,24 @@
         pathPoints: pa.pathPoints.map((pp) => (pp.id === dragHandle!.pointId && pp.handle ? { ...pp, handle: ops.applyHandleConstraint(pp.handle, dragHandle!.which, newV) } : pp))
       });
       onchange({ ...currentPattern, paths, hasChanged: true });
+      return;
+    }
+    if (isDragging && dragPieceIds && dragPieceIds.size > 0 && dragStartWorld) {
+      const world = toPattern(pos.x, pos.y);
+      const dx = world.x - dragStartWorld.x;
+      const dy = world.y - dragStartWorld.y;
+      const pieces = currentPattern.pieces.map((p) => {
+        if (!dragPieceIds!.has(p.id)) return p;
+        const start = dragPieceStarts?.get(p.id) ?? { x: p.position?.x ?? 0, y: p.position?.y ?? 0 };
+        return {
+          ...p,
+          position: {
+            x: Math.round((start.x + dx) * 10) / 10,
+            y: Math.round((start.y + dy) * 10) / 10
+          }
+        };
+      });
+      onchange({ ...currentPattern, pieces, hasChanged: true });
       return;
     }
     if (isDragging && dragPiecePt) {
@@ -3397,6 +3458,8 @@
       isMarquee = false;
     }
     isDragging = false;
+    dragPieceIds = null;
+    dragPieceStarts = null;
     dragPointId = null;
     dragHandle = null;
     dragPiecePt = null;
@@ -3432,7 +3495,7 @@
   onmouseleave={() => { cursorMm.set(null); handleMouseUp(); }}
   onwheel={handleWheel}
   oncontextmenu={handleContextMenu}
-  style="cursor: {$selectedTool === 'pan' ? 'grab' : 'crosshair'}; touch-action: none;"
+  style="cursor: {$selectedTool === 'pan' || isSpaceDown ? (isPanning ? 'grabbing' : 'grab') : 'crosshair'}; touch-action: none;"
 ></canvas>
 
 {#if $selectedTool === 'seam-multi' && (seamFromPicks.length > 0 || seamPhase === 'to')}
@@ -3456,7 +3519,7 @@
   <ContextMenu x={contextMenu.x} y={contextMenu.y} items={contextMenu.items} onclose={() => (contextMenu = null)} />
 {/if}
 
-<div class="absolute top-2 left-2 flex gap-1">
+<div class="absolute top-2 left-2 flex flex-wrap gap-1 max-w-[calc(100%-64px)] z-10">
   <button
     class="btn btn-xs"
     class:btn-active={showSeams}
@@ -3481,7 +3544,7 @@
 </div>
 
 {#if showSnapshotControls}
-  <div class="absolute top-10 left-56 z-10 bg-base-100/95 backdrop-blur rounded-lg shadow-lg border border-base-300 p-2 text-xs space-y-1 w-52" use:draggablePanel={{ handle: '[data-drag-handle]' }}>
+  <div class="absolute top-10 left-2 z-10 bg-base-100/95 backdrop-blur rounded-lg shadow-lg border border-base-300 p-2 text-xs space-y-1 w-52 max-w-[calc(100%-64px)]" use:draggablePanel={{ handle: '[data-drag-handle]' }}>
     <div class="flex items-center justify-between" data-drag-handle><span class="font-bold">Frozen snapshot</span>
       <button class="btn btn-ghost btn-xs btn-circle" aria-label="Close" onclick={() => (showSnapshotControls = false)}>✕</button>
     </div>
@@ -3572,7 +3635,7 @@
 
 {#if $selectedTool === 'measure'}
   <!-- Measurements panel: saved Measure-tool annotations with live values, targets and zoom-to -->
-  <div class="absolute top-10 right-14 z-10 bg-base-100/95 backdrop-blur rounded-lg shadow-lg border border-base-300 p-2 text-xs space-y-1 w-72" use:draggablePanel={{ handle: '[data-drag-handle]' }}>
+  <div class="absolute top-10 right-14 z-10 bg-base-100/95 backdrop-blur rounded-lg shadow-lg border border-base-300 p-2 text-xs space-y-1 w-72 max-w-[calc(100%-80px)]" use:draggablePanel={{ handle: '[data-drag-handle]' }}>
     <div class="flex items-center justify-between" data-drag-handle>
       <span class="font-bold">Measurements</span>
       <label class="flex items-center gap-1 cursor-pointer" title="Show measurements on the canvas">

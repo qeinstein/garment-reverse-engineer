@@ -81,9 +81,85 @@ export function decodePiecePathId(piecePathId: string): { panelId: string; edgeI
 }
 
 /**
+ * Repairs topological gaps and references in AI-predicted GarmentIR documents.
+ * Ensures boundary loops are closed without gaps, verifies panel/edge references,
+ * and falls back gracefully to default materials.
+ */
+export function repairGarmentIR(rawGarment: GarmentIR): GarmentIR {
+  if (!rawGarment || !rawGarment.panels) return rawGarment;
+  const garment = structuredClone(rawGarment);
+
+  // Ensure default material if missing
+  if (!garment.materials || garment.materials.length === 0) {
+    garment.materials = [{
+      id: 'default_cotton',
+      name: 'Default Cotton',
+      color: '#4a5568',
+      stretch_warp: 10,
+      stretch_weft: 10,
+      bend_stiffness: 15,
+      thickness_mm: 0.5,
+      density_gsm: 180
+    }];
+  }
+  const materialIds = new Set(garment.materials.map((m) => m.id));
+  const fallbackMaterialId = garment.materials[0].id;
+
+  const validPanelEdgeIds = new Map<string, Set<string>>();
+
+  for (let pi = 0; pi < garment.panels.length; pi++) {
+    const panel = garment.panels[pi];
+    if (!panel.id) panel.id = `panel_${pi}`;
+    if (!materialIds.has(panel.material_id)) {
+      panel.material_id = fallbackMaterialId;
+    }
+
+    const edges = panel.boundary?.edges ?? [];
+    const edgeIdSet = new Set<string>();
+
+    if (edges.length >= 3) {
+      // Chain loop edges continuously to eliminate floating-point endpoint gaps
+      for (let ei = 0; ei < edges.length; ei++) {
+        const edge = edges[ei];
+        if (!edge.id) edge.id = `edge_${ei}`;
+        edgeIdSet.add(edge.id);
+
+        const nextEdge = edges[(ei + 1) % edges.length];
+        // Snap nextEdge start to this edge end
+        nextEdge.start = { x: edge.end.x, y: edge.end.y };
+      }
+    }
+    validPanelEdgeIds.set(panel.id, edgeIdSet);
+  }
+
+  // Sanitize seams: retain only seams whose edge references exist on valid panels
+  if (garment.seams) {
+    garment.seams = garment.seams
+      .map((seam, si) => {
+        if (!seam.id) seam.id = `seam_${si}`;
+        const edges_a = (seam.edges_a ?? []).filter((ref) =>
+          validPanelEdgeIds.get(ref.panel_id)?.has(ref.edge_id)
+        );
+        const edges_b = (seam.edges_b ?? []).filter((ref) =>
+          validPanelEdgeIds.get(ref.panel_id)?.has(ref.edge_id)
+        );
+        return {
+          ...seam,
+          edges_a,
+          edges_b
+        };
+      })
+      .filter((seam) => seam.edges_a.length > 0 && seam.edges_b.length > 0);
+  }
+
+  return garment;
+}
+
+/**
  * Converts a GarmentIR document into an upstream-compatible Seamer Pattern.
  */
-export function garmentIRToSeamer(garment: GarmentIR): SeamerPattern {
+export function garmentIRToSeamer(rawGarment: GarmentIR): SeamerPattern {
+  const garment = repairGarmentIR(rawGarment);
   const points: SeamerConstrainablePoint[] = [];
   const paths: SeamerConstrainablePath[] = [];
   const pieces: SeamerPiece[] = [];
@@ -292,21 +368,32 @@ export function garmentIRToSeamer(garment: GarmentIR): SeamerPattern {
   }
 
   // Convert seams
-  const seams: SeamerSeam[] = garment.seams.map((seam) => ({
-    id: seam.id,
-    name: seam.name ?? seam.id,
-    label: null,
-    fromPaths: seam.edges_a.map((ref) => ({
-      id: encodePiecePathId(ref.panel_id, ref.edge_id),
-      mirrored: ref.mirrored ?? false,
-      reversed: ref.reversed ?? false
-    })),
-    toPaths: seam.edges_b.map((ref) => ({
-      id: encodePiecePathId(ref.panel_id, ref.edge_id),
-      mirrored: ref.mirrored ?? false,
-      reversed: ref.reversed ?? false
+  const validPiecePathIds = new Set<string>();
+  for (const pc of pieces) {
+    for (const pp of pc.mainPaths) validPiecePathIds.add(pp.id);
+  }
+
+  const seams: SeamerSeam[] = (garment.seams ?? [])
+    .map((seam) => ({
+      id: seam.id,
+      name: seam.name ?? seam.id,
+      label: null,
+      fromPaths: seam.edges_a
+        .map((ref) => ({
+          id: encodePiecePathId(ref.panel_id, ref.edge_id),
+          mirrored: ref.mirrored ?? false,
+          reversed: ref.reversed ?? false
+        }))
+        .filter((ref) => validPiecePathIds.has(ref.id)),
+      toPaths: seam.edges_b
+        .map((ref) => ({
+          id: encodePiecePathId(ref.panel_id, ref.edge_id),
+          mirrored: ref.mirrored ?? false,
+          reversed: ref.reversed ?? false
+        }))
+        .filter((ref) => validPiecePathIds.has(ref.id))
     }))
-  }));
+    .filter((seam) => seam.fromPaths.length > 0 && seam.toPaths.length > 0);
 
   // Convert materials
   const materials: SeamerMaterial[] = garment.materials.map((mat) => {

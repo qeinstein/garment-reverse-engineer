@@ -27,7 +27,7 @@
     }
     if (pieceIds.size === 1) {
       const pc = currentPattern.pieces.find((q) => q.id === [...pieceIds][0]);
-      return pc ? { label: pc.name, x: pc.position.x, y: pc.position.y } : null;
+      return pc ? { label: pc.name, x: pc.position?.x ?? 0, y: pc.position?.y ?? 0 } : null;
     }
     return null;
   });

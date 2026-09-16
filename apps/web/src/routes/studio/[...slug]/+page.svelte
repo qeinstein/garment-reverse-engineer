@@ -261,6 +261,7 @@
   const getPatternSnapshot = () => $state.snapshot(currentPattern) as Pattern;
 
   onMount(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1200) showLeftPanel = false;
     const disposeCommandApi = installSeamerAutomation();
     const unsubscribeEditor = pattern.subscribe((next) => {
       if (JSON.stringify(next) !== JSON.stringify(currentPattern)) currentPattern = next;
@@ -935,6 +936,13 @@
           {/each}
         </ul>
       </div>
+      <button
+        class="btn btn-xs btn-primary gap-1 font-semibold shadow-sm"
+        onclick={() => (showAiModal = true)}
+        title="AI Reverse Engineer: reconstruct 2D pattern & 3D cloth drape from 4 photos"
+      >
+        <span>🧵</span> <span class="hidden sm:inline">AI Reverse Engineer</span>
+      </button>
       <div class="join join-horizontal" data-tour-id="tour-view-mode">
         <button class="join-item btn btn-xs" class:btn-active={viewMode === '2d'} onclick={() => setViewMode('2d')}>2D</button>
         <button class="join-item btn btn-xs" class:btn-active={viewMode === 'both'} onclick={() => setViewMode('both')}>Both</button>
@@ -946,8 +954,10 @@
       <button class="btn btn-ghost btn-xs" onclick={handleRedo} disabled={!$redoLabel} title={$redoLabel ? `Redo ${$redoLabel} (Ctrl+Shift+Z)` : 'Nothing to redo'}>&#x21AA;</button>
       <div class="dropdown dropdown-end">
         <div role="button" tabindex="0" class="btn btn-ghost btn-xs" data-testid="import-menu-trigger">Import</div>
-        <ul class="dropdown-content menu bg-base-200 rounded-box z-50 w-60 p-2 shadow text-sm">
-          <li class="menu-title">SeamScape importers</li>
+        <ul class="dropdown-content menu bg-base-200 rounded-box z-50 w-64 p-2 shadow text-sm">
+          <li class="menu-title">AI Reverse Engineering</li>
+          <li><button class="text-primary font-medium" onclick={() => (showAiModal = true)}>🧵 AI Reverse Engineer (4 photos)…</button></li>
+          <li class="menu-title pt-2">SeamScape importers</li>
           <li><button onclick={handleLegacySourcePair}>Project + Raw JSON (complete)…</button></li>
           <li><button onclick={() => handleSourceImport('image')}>Background image…</button></li>
           <li><button onclick={() => handleSourceImport('seamly')}>Seamly… <span class="text-xs opacity-50">Experimental</span></button></li>
@@ -995,23 +1005,23 @@
       </button>
       {#key $patternEditor}<ErrorsPanel {currentPattern} editor={$patternEditor} />{/key}
       <HistoryMenu onundo={(n) => { for (let i = 0; i < n; i++) handleUndo(); }} onredo={handleRedo} />
-      <button class="btn btn-ghost btn-xs" onclick={() => showVersions = true} title="Version history" aria-label="Version history">
+      <button class="btn btn-ghost btn-xs hidden md:inline-flex" onclick={() => showVersions = true} title="Version history" aria-label="Version history">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">history</span>
       </button>
       <ThemeToggle size="xs" />
       <button class="btn btn-ghost btn-xs" onclick={() => showSettings = true} title="Settings" aria-label="Settings">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">settings</span>
       </button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showCommandPalette = true} title="Command palette (⌘K)" aria-label="Command palette">
+      <button class="btn btn-ghost btn-xs hidden lg:inline-flex" onclick={() => showCommandPalette = true} title="Command palette (⌘K)" aria-label="Command palette">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">terminal</span>
       </button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showTour = true} title="Take tour" aria-label="Take tour">
+      <button class="btn btn-ghost btn-xs hidden xl:inline-flex" onclick={() => showTour = true} title="Take tour" aria-label="Take tour">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">tour</span>
       </button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showBugReport = true} title="Send feedback" aria-label="Send feedback">
+      <button class="btn btn-ghost btn-xs hidden xl:inline-flex" onclick={() => showBugReport = true} title="Send feedback" aria-label="Send feedback">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">feedback</span>
       </button>
-      <button class="btn btn-ghost btn-xs" onclick={() => showShortcuts = true} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
+      <button class="btn btn-ghost btn-xs hidden lg:inline-flex" onclick={() => showShortcuts = true} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">
         <span class="material-symbols-rounded notranslate align-middle" style="font-size:18px">keyboard</span>
       </button>
     </div>
