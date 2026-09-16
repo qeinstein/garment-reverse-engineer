@@ -141,8 +141,9 @@ async function reconstructViaDirectHF(
 ): Promise<ReconstructionResult> {
   const spaceUrl =
     options.spaceUrl ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.PUBLIC_HF_REWEAVER_SPACE_URL) ||
     (typeof process !== 'undefined' && process.env?.PUBLIC_HF_REWEAVER_SPACE_URL) ||
-    'https://huggingface.co/spaces/qeinstein/reweaver-zero';
+    'Fluxx08/reweaver-zero';
 
   const [frontBlob, rightBlob, backBlob, leftBlob] = await Promise.all([
     ensureBlob(orderedViews[0]),
